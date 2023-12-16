@@ -1,42 +1,51 @@
-def hash(s):
-    val = 0
-    for c in s:
-        val += ord(c)
-        val *= 17
-        val = val % 256
-    return val
+def do_beam(grid, x, y, dx, dy, w, h, energized, done_splitters=set()):
+    while True:
+        x += dx
+        y += dy
+
+        if x < 0 or x >= w or y < 0 or y >= h:
+            return
+
+        energized[y][x] = 1
+
+        if grid[y][x] == '/':
+            dx, dy = -dy, -dx
+        elif grid[y][x] == '\\':
+            dx, dy = dy, dx
+        elif grid[y][x] == '|' and dx != 0:
+            if (x, y) not in done_splitters:
+                done_splitters.add((x, y))
+                do_beam(grid, x, y, 0, -1, w, h, energized, done_splitters)
+                do_beam(grid, x, y, 0, 1, w, h, energized, done_splitters)
+            return
+        elif grid[y][x] == '-' and dy != 0:
+            if (x, y) not in done_splitters:
+                done_splitters.add((x, y))
+                do_beam(grid, x, y, 1, 0, w, h, energized, done_splitters)
+                do_beam(grid, x, y, -1, 0, w, h, energized, done_splitters)
+            return
 
 
 with open("input.txt") as f:
-    strings = f.read().strip().split(',')
-    labels = [(x.split('=') if '=' in x else x.split('-'))[0] for x in strings]
+    grid = [list(x.strip()) for x in f.readlines()]
+    best_score, w, h = 0, len(grid[0]), len(grid)
 
-    last_strengths = {}
+    for y in range(h):
+        energized = [[0 for _ in line] for line in grid]
+        do_beam(grid, -1, y, 1, 0, w, h, energized, set())
+        best_score = max(best_score, sum(map(sum, energized)))
 
-    hashes = list(map(hash, labels))
-    boxes = [[] for _ in range(256)]
+        energized = [[0 for _ in line] for line in grid]
+        do_beam(grid, w, y, -1, 0, w, h, energized, set())
+        best_score = max(best_score, sum(map(sum, energized)))
 
-    for i in range(len(strings)):
-        box = hashes[i]
-        lbl = labels[i]
-        if '-' in strings[i] and lbl in last_strengths:
-            strength = last_strengths[lbl]
-            if (lbl, strength) in boxes[box]:
-                boxes[box].remove((lbl, strength))
-        elif '=' in strings[i]:
-            if lbl in last_strengths and (lbl, last_strengths[lbl]) in boxes[box]:
-                j = boxes[box].index((lbl, last_strengths[lbl]))
-                strength = strings[i].split('=')[1]
-                boxes[box][j] = (lbl, strength)
-                last_strengths[lbl] = strength
-            else:
-                strength = strings[i].split('=')[1]
-                boxes[box].append((lbl, strength))
-                last_strengths[lbl] = strength
+    for x in range(w):
+        energized = [[0 for _ in line] for line in grid]
+        do_beam(grid, x, -1, 0, 1, w, h, energized, set())
+        best_score = max(best_score, sum(map(sum, energized)))
 
-    vals = 0
-    for i, box in enumerate(boxes):
-        for j, item in enumerate(box):
-            vals += (i + 1) * (j + 1) * int(item[1])
-    print(labels, hashes, boxes)
-    print(vals)
+        energized = [[0 for _ in line] for line in grid]
+        do_beam(grid, x, h, 0, -1, w, h, energized, set())
+        best_score = max(best_score, sum(map(sum, energized)))
+
+    print(best_score)
