@@ -5,62 +5,56 @@ def is_inside(x, y, w, h):
     return x >= 0 and y >= 0 and x < w and y < h
 
 
+def get_targets(x, y, dx, dy, heat, w, h, grid):
+    targets = []
+    heat_cum = heat
+    best_end_heat = 999999
+    for i in range(3):
+        nx, ny = x + i * dx, y + i * dy
+        if not is_inside(nx, ny, w, h):
+            break
+        if i > 0:
+            heat_cum += grid[ny][nx]
+
+        if (nx, ny) == (w - 1, h - 1):
+            best_end_heat = min(best_end_heat, heat_cum)
+
+        if is_inside(nx + dy, ny + dx, w, h):
+            if (nx + dy, ny + dx) == (w - 1, h - 1):
+                best_end_heat = min(best_end_heat, heat_cum + grid[ny + dx][nx + dy])
+            targets.append((nx + dy, ny + dx, dy, dx, heat_cum + grid[ny + dx][nx + dy]))
+        if is_inside(nx - dy, ny - dx, w, h):
+            if (nx - dy, ny - dx) == (w - 1, h - 1):
+                best_end_heat = min(best_end_heat, heat_cum + grid[ny - dx][nx - dy])
+            targets.append((nx - dy, ny - dx, -dy, -dx, heat_cum + grid[ny - dx][nx - dy]))
+
+    return targets, best_end_heat
+
+
 with open("test.txt") as f:
     grid = [list(map(int, list(x.strip()))) for x in f.readlines()]
-    width = len(grid[0])
-    height = len(grid)
-    best_heat = [[float('inf') for _ in range(width)] for _ in range(height)]
+    w, h = len(grid[0]), len(grid)
 
-    queue = deque()
-    queue.append((1, 0, (1, 0), 2, grid[0][1]))
-    queue.append((0, 1, (0, 1), 2, grid[1][0]))
+    q = deque()
+    q.extend(get_targets(0, 0, 1, 0, 0, w, h, grid)[0])
+    q.extend(get_targets(0, 0, 0, 1, 0, w, h, grid)[0])
 
-    best_heat[0][1] = grid[0][1]
-    best_heat[1][0] = grid[1][0]
+    best_end_heat = 999999
 
-    visited = set()
+    visited = {}
 
-    while len(queue) > 0:
-        # print(len(queue))
-        x, y, (dx, dy), moves_left, heat = queue.pop()
+    while len(q) > 0:
+        x, y, dx, dy, heat = q.pop()
+        if (x, y) == (w - 1, h - 1):
+            print(x, y, dx, dy, heat)
 
-        if (x, y) == (5, 1):
-            print(x, y, (dx, dy), moves_left, heat)
+        tar, end_heat = get_targets(x, y, dx, dy, heat, w, h, grid)
+        best_end_heat = min(best_end_heat, end_heat)
 
-        if is_inside(x + dx, y + dy, width, height) and moves_left > 0:
-            nx, ny = x + dx, y + dy
-            new_heat = heat + grid[ny][nx]
-            v1 = (nx, ny, (dx, dy), moves_left - 1, new_heat)
+        for t in tar:
+            key = t[:4]
+            if key not in visited or visited[key] > t[-1]:
+                q.appendleft(t)
+                visited[key] = t[-1]
 
-            if v1[:4] not in visited or new_heat < best_heat[ny][nx]:
-                queue.appendleft(v1)
-                visited.add(v1[:4])
-
-            best_heat[ny][nx] = min(best_heat[ny][nx], new_heat)
-
-        if is_inside(x + dy, y + dx, width, height):
-            nx, ny = x + dy, y + dx
-            new_heat = heat + grid[ny][nx]
-            v2 = (nx, ny, (dy, dx), 3, new_heat)
-
-            if v2[:4] not in visited or new_heat < best_heat[ny][nx]:
-                queue.appendleft(v2)
-                visited.add(v2[:4])
-
-            best_heat[ny][nx] = min(best_heat[ny][nx], new_heat)
-
-        if is_inside(x - dy, y - dx, width, height):
-            nx, ny = x - dy, y - dx
-            new_heat = heat + grid[ny][nx]
-            v3 = (nx, ny, (-dy, -dx), 3, new_heat)
-
-            if v3[:4] not in visited or new_heat < best_heat[ny][nx]:
-                queue.appendleft(v3)
-                visited.add(v3[:4])
-
-            best_heat[ny][nx] = min(best_heat[ny][nx], new_heat)
-
-    for l in best_heat:
-        print(l)
-
-    print(best_heat[height - 1][width - 1])
+    print(best_end_heat)
