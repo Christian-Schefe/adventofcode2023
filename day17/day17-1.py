@@ -7,26 +7,26 @@ def is_inside(x, y, w, h):
 
 def get_targets(x, y, dx, dy, heat, w, h, grid):
     targets = []
-    heat_cum = heat
+    heat_cumulated = heat
     best_end_heat = 999999
     for i in range(3):
         nx, ny = x + i * dx, y + i * dy
         if not is_inside(nx, ny, w, h):
             break
         if i > 0:
-            heat_cum += grid[ny][nx]
+            heat_cumulated += grid[ny][nx]
 
         if (nx, ny) == (w - 1, h - 1):
-            best_end_heat = min(best_end_heat, heat_cum)
+            best_end_heat = min(best_end_heat, heat_cumulated)
 
         if is_inside(nx + dy, ny + dx, w, h):
             if (nx + dy, ny + dx) == (w - 1, h - 1):
-                best_end_heat = min(best_end_heat, heat_cum + grid[ny + dx][nx + dy])
-            targets.append((nx + dy, ny + dx, dy, dx, heat_cum + grid[ny + dx][nx + dy]))
+                best_end_heat = min(best_end_heat, heat_cumulated + grid[ny + dx][nx + dy])
+            targets.append((nx + dy, ny + dx, dy, dx, heat_cumulated + grid[ny + dx][nx + dy]))
         if is_inside(nx - dy, ny - dx, w, h):
             if (nx - dy, ny - dx) == (w - 1, h - 1):
-                best_end_heat = min(best_end_heat, heat_cum + grid[ny - dx][nx - dy])
-            targets.append((nx - dy, ny - dx, -dy, -dx, heat_cum + grid[ny - dx][nx - dy]))
+                best_end_heat = min(best_end_heat, heat_cumulated + grid[ny - dx][nx - dy])
+            targets.append((nx - dy, ny - dx, -dy, -dx, heat_cumulated + grid[ny - dx][nx - dy]))
 
     return targets, best_end_heat
 
