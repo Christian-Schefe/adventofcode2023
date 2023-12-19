@@ -1,6 +1,3 @@
-from collections import deque
-
-
 def do_split(val_range, value, comp_type):
     min_v, max_v = val_range
     if comp_type == '<':
@@ -46,8 +43,7 @@ def do_comp(part: dict, rule_name, rules):
 
 with open("input.txt") as f:
     lines = [x.strip() for x in f.readlines()]
-    empty_line = lines.index('')
-    rules = lines[:empty_line]
+    rules = lines[:lines.index('')]
 
     parsed_rules = {}
     for rule in rules:
@@ -64,9 +60,6 @@ with open("input.txt") as f:
         parsed_rules[name] = (parsed_sections, default_destination)
 
     start_range = {'x': (1, 4000), 's': (1, 4000), 'm': (1, 4000), 'a': (1, 4000)}
-    result = do_comp(start_range, 'in', parsed_rules)
-    sums = 0
-    for r in result:
-        possibs = (r['a'][1] - r['a'][0] + 1) * (r['x'][1] - r['x'][0] + 1) * (r['s'][1] - r['s'][0] + 1) * (r['m'][1] - r['m'][0] + 1)
-        sums += possibs
+    results = do_comp(start_range, 'in', parsed_rules)
+    sums = sum([(r['a'][1] - r['a'][0] + 1) * (r['x'][1] - r['x'][0] + 1) * (r['s'][1] - r['s'][0] + 1) * (r['m'][1] - r['m'][0] + 1) for r in results])
     print(sums)
