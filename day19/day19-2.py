@@ -5,42 +5,40 @@ def do_split(val_range, value, comp_type):
     min_v, max_v = val_range
     if comp_type == '<':
         if max_v < value:
-            return [(min_v, max_v)], []
+            return (min_v, max_v), None
         if min_v >= value:
-            return [], [(min_v, max_v)]
-        return [(min_v, value - 1)], [(value, max_v)]
+            return None, (min_v, max_v)
+        return (min_v, value - 1), (value, max_v)
     if comp_type == '>':
         if min_v > value:
-            return [(min_v, max_v)], []
+            return (min_v, max_v), None
         if max_v <= value:
-            return [], [(min_v, max_v)]
-        return [(value + 1, max_v)], [(min_v, value)]
+            return None, (min_v, max_v)
+        return (value + 1, max_v), (min_v, value)
 
 
 def do_comp(part: dict, rule_name, rules):
     print(part, rule_name)
     if rule_name == 'A':
-        return [(part, 'A')]
+        return [part]
     if rule_name == 'R':
-        return [(part, 'R')]
+        return []
 
     sections, default_destination = rules[rule_name]
 
     results = []
     for (param, comp_type, value, destination) in sections:
-        val_ranges = part[param]
-        split_ranges = []
-        passing_ranges = []
-        for r in val_ranges:
-            split_r = do_split(r, value, comp_type)
-            split_ranges.extend(split_r[0])
-            passing_ranges.extend(split_r[1])
+        val_range = part[param]
+        accepted_range, passing_range = do_split(val_range, value, comp_type)
 
-        accepted_part = part.copy()
-        accepted_part[param] = split_ranges
-        part[param] = passing_ranges
+        if accepted_range is not None:
+            accepted_part = part.copy()
+            accepted_part[param] = accepted_range
 
-        results.extend(do_comp(accepted_part, destination, rules))
+            results.extend(do_comp(accepted_part, destination, rules))
+        part[param] = passing_range
+        if passing_range is None:
+            return results
 
     results.extend(do_comp(part, default_destination, rules))
     return results
@@ -60,25 +58,15 @@ with open("input.txt") as f:
         default_destination = sections[-1]
         for section in sections[:-1]:
             comp_type = '<' if '<' in section else '>'
-            comp_i = section.index(comp_type)
-            colon_i = section.index(':')
-            parameter = section[:comp_i]
-            value = int(section[comp_i+1:colon_i])
-            destination = section[colon_i+1:]
-            parsed_sections.append((parameter, comp_type, value, destination))
-        print(name, parsed_sections, default_destination)
+            comp_i, colon_i = section.index(comp_type), section.index(':')
+            parsed_sections.append((section[:comp_i], comp_type, int(section[comp_i+1:colon_i]), section[colon_i+1:]))
 
         parsed_rules[name] = (parsed_sections, default_destination)
 
-    print(parsed_rules)
-
-    start_range = {'x': [(1, 4000)], 's': [(1, 4000)], 'm': [(1, 4000)], 'a': [(1, 4000)]}
+    start_range = {'x': (1, 4000), 's': (1, 4000), 'm': (1, 4000), 'a': (1, 4000)}
     result = do_comp(start_range, 'in', parsed_rules)
     sums = 0
     for r in result:
-        if r[1] == 'A':
-            possibs = (r[0]['a'][0][1] - r[0]['a'][0][0] + 1) * (r[0]['x'][0][1] - r[0]['x'][0][0] + 1) * (r[0]['s'][0][1] - r[0]['s'][0][0] + 1) * (r[0]['m'][0][1] - r[0]['m'][0][0] + 1)
-            sums += possibs
-            print(possibs)
-        print(r)
+        possibs = (r['a'][1] - r['a'][0] + 1) * (r['x'][1] - r['x'][0] + 1) * (r['s'][1] - r['s'][0] + 1) * (r['m'][1] - r['m'][0] + 1)
+        sums += possibs
     print(sums)
