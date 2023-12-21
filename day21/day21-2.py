@@ -18,47 +18,38 @@ def layer_offset(x, y):
     return lx, ly
 
 
+def is_inside(x, y, w, h):
+    return x >= 0 and y >= 0 and x < w and y < h
+
+
 def get_adj(x, y):
-    q = set([((x, y), (0, 0))])
-    for _ in range(1):
-        nq = set()
-        for (cx, cy), (lx, ly) in q:
-            for dx, dy in DIRS:
-                nx, ny = (cx + dx) % width, (cy + dy) % height
-                nlx, nly = layer_offset(cx + dx, cy + dy)
-                if grid[ny][nx] != '#':
-                    nq.add(((nx, ny), (lx + nlx, ly + nly)))
-        q = nq
-    if ((x, y), (0, 0)) in q:
-        q.remove(((x, y), (0, 0)))
-    return list(q)
+    adj = [(x + dx, y + dy) for dx, dy in DIRS if is_inside(x + dx, y + dy, width, height) and grid[y + dy][x + dx] != '#']
+    return adj
 
 
 def get_distances(start):
-    q = set([(start, (0, 0))])
+    q = set([start])
     durations = {}
     max_dur = 0
     prev_durs = -1
 
-    for i in range(0, width * height * 9):
+    for i in range(0, width * height):
         if len(durations) == prev_durs:
             break
         prev_durs = len(durations)
         nq = set()
-        for pos, lpos in q:
-            if (pos, lpos) not in durations:
-                durations[(pos, lpos)] = i
-                if lpos == (0, 0):
-                    max_dur = max(max_dur, i)
-                for ad, lad in adj[pos]:
-                    if abs(lpos[0] + lad[0]) <= 1 and abs(lpos[1] + lad[1]) <= 1:
-                        nq.add((ad, (lpos[0] + lad[0], lpos[1] + lad[1])))
+        for pos in q:
+            if pos not in durations:
+                durations[pos] = i
+                max_dur = max(max_dur, i)
+                for ad in adj[pos]:
+                    nq.add(ad)
         q = nq
 
     return durations, max_dur
 
 
-with open("test.txt") as f:
+with open("input.txt") as f:
     grid = [list(x.strip()) for x in f.readlines()]
     start_pos = [(x, y) for y, line in enumerate(grid) for x, tile in enumerate(line) if tile == 'S'][0]
     width, height = len(grid[0]), len(grid)
@@ -66,42 +57,47 @@ with open("test.txt") as f:
 
     adj = {(x, y): get_adj(x, y) for y, line in enumerate(grid) for x, tile in enumerate(line) if tile != '#'}
 
-    durations, max_dur = get_distances(start_pos)
-
-    evens = len([(x, y) for ((x, y), (lx, ly)), dur in durations.items() if (lx, ly) == (0, 0) and dur % 2 == 0])
-    odds = len([(x, y) for ((x, y), (lx, ly)), dur in durations.items() if (lx, ly) == (0, 0) and dur % 2 == 1])
-
-    nw_corner_durs, _ = get_distances((0, 0))
-    ne_corner_durs, _ = get_distances((width - 1, 0))
-    sw_corner_durs, _ = get_distances((0, height - 1))
-    se_corner_durs, _ = get_distances((width - 1, height - 1))
-
-    print("max dur:", max_dur)
-    print("e/o:", evens, odds)
-
     reachable_count = 0
     STEPS = 26501365
-    STEPS = 5000
+    # STEPS = 5000
 
-    fully_inside_rings = (STEPS - max_dur) // width + 1
+    CORNERS = [(0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)]
+    EDGES = [(start_pos[0], 0), (start_pos[0], height - 1), (0, start_pos[1]), (width - 1, start_pos[1])]
 
-    even_ring_occs = 0
-    odd_ring_occs = 0
+    center_durs = get_distances(start_pos)
+    corner_durs = [get_distances(corner) for corner in CORNERS]
+    edge_durs = [get_distances(edge) for edge in EDGES]
 
-    for i in range(fully_inside_rings):
-        occs = max(1, 4 * i)
-        if i % 2 == 0:
-            even_ring_occs += occs
-        else:
-            odd_ring_occs += occs
+    i = 0
+    while True:
+        center_occs = 1 if i == 0 else 0
+        corner_occs = 0 if i <= 1 else i - 1
+        edge_occs = 0 if i == 0 else 1
 
-    print(fully_inside_rings, even_ring_occs * evens, odd_ring_occs * odds)
-    print(even_ring_occs * evens + odd_ring_occs * odds)
+        center_steps_left = STEPS - (i * width) 
+        corner_steps_left = STEPS - ((i - 2) * width + width + 1)
+        edge_steps_left = STEPS - ((i - 1) * width + (width + 1) // 2)
 
-    outest_ring_s_steps = STEPS - fully_inside_rings * width
-    outest_ring_se_corner_steps = STEPS - ((fully_inside_rings - 2) * width + durations[((0, 0), (0, 0))] + 2)
-    outest_ring_occs = fully_inside_rings * 4
+        print(i, center_occs, corner_occs, edge_occs)
+        print(i, center_steps_left, corner_steps_left, edge_steps_left)
+        old_count = reachable_count
 
-    print(outest_ring_s_steps, outest_ring_occs)
-    print(outest_ring_se_corner_steps)
-    print(outest_ring_se_corner_steps - nw_corner_durs[(start_pos, (0, 0))])
+        if center_occs > 0 and center_steps_left >= 0:
+            center_reachables = [(x, y) for (x, y), dur in center_durs[0].items() if center_steps_left >= dur and (center_steps_left - dur) % 2 == 0]
+            reachable_count += center_occs * len(center_reachables)
+
+        if corner_occs > 0 and corner_steps_left >= 0:
+            for durs in corner_durs:
+                corner_reachables = [(x, y) for (x, y), dur in durs[0].items() if corner_steps_left >= dur and (corner_steps_left - dur) % 2 == 0]
+                reachable_count += corner_occs * len(corner_reachables)
+
+        if edge_occs > 0 and edge_steps_left >= 0:
+            for durs in edge_durs:
+                edge_reachables = [(x, y) for (x, y), dur in durs[0].items() if edge_steps_left >= dur and (edge_steps_left - dur) % 2 == 0]
+                reachable_count += edge_occs * len(edge_reachables)
+
+        if old_count == reachable_count:
+            break
+        i += 1
+
+    print(reachable_count)
