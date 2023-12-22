@@ -39,23 +39,16 @@ def get_supporters_and_supported(block, block_i, grid):
 
 
 def get_fall_count(block_i, supps: list[tuple[set, set]], coords):
-    cache = {}
-    sums = 0
-    for i in range(len(coords)):
-        if will_fall(block_i, i, supps, cache) and i != block_i:
-            sums += 1
-    return sums
+    cache = {block_i: True}
+    return len([1 for i, _ in enumerate(coords) if will_fall(i, supps, cache) and i != block_i])
 
 
-def will_fall(removed_block, block_i, supps, cache: dict):
+def will_fall(block_i, supps, cache: dict):
     if block_i in cache:
         return cache[block_i]
-    if block_i == removed_block:
-        cache[block_i] = True
-        return True
     supporters = supps[block_i][0]
     for i in supporters:
-        wf = will_fall(removed_block, i, supps, cache)
+        wf = will_fall(i, supps, cache)
         if not wf:
             cache[block_i] = False
             return False
@@ -88,7 +81,6 @@ with open("input.txt") as f:
 
     for block_i, block in enumerate(coords):
         falls = get_fall_count(block_i, supporters_and_supported, coords)
-        print(block, falls)
         disintegration_count += falls
 
     print(disintegration_count)
