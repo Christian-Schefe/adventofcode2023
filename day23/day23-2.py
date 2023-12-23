@@ -1,86 +1,76 @@
 from collections import deque, defaultdict
+import sys
+
+DIRS = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+SLOPES = ['>', 'v', '<', '^']
+ANTI_SLOPES = ['<', '^', '>', 'v']
+
+sys.setrecursionlimit(100000)
+
+def inside(x, y, w, h):
+    return x >= 0 and y >= 0 and x < w and y < h
 
 
-def drop_block(block, block_i, grid):
-    important_xy = [(x, y) for x in range(block[0][0], block[1][0] + 1) for y in range(block[0][1], block[1][1] + 1)]
-    cur_z = block[0][2]
-    z_diff = block[1][2] - block[0][2]
-    while True:
-        if cur_z == 1:
-            break
-        cur_z -= 1
-        failure = False
-        for x, y in important_xy:
-            coord = (x, y, cur_z)
-            if coord in grid and grid[coord] != block_i:
-                failure = True
-                cur_z += 1
-                break
-        if failure:
-            break
-
-    block = ([block[0][0], block[0][1], cur_z], [block[1][0], block[1][1], cur_z + z_diff])
-    return block
+def is_walkable(i, x, y):
+    return inside(x, y, w, h) and grid[y][x] != '#'
 
 
-def get_supporters_and_supported(block, block_i, grid):
-    important_xy = [(x, y) for x in range(block[0][0], block[1][0] + 1) for y in range(block[0][1], block[1][1] + 1)]
-    supporters = set()
-    supported = set()
-    for x, y in important_xy:
-        bottom_coord = (x, y, block[0][2] - 1)
-        top_coord = (x, y, block[1][2] + 1)
-        if bottom_coord in grid:
-            supporters.add(grid[bottom_coord])
-        if top_coord in grid:
-            supported.add(grid[top_coord])
+def follow(x, y, path: list, cache: dict):
+    path.append((x, y))
+    if x == end and y == h - 1:
+        print(len(path) - 1)
+        return len(path) - 1
 
-    return supporters, supported
+    longest_path = 0
 
+    for i, (dx, dy) in enumerate(DIRS):
+        if not is_walkable(i, x + dx, y + dy):
+            continue
 
-def get_fall_count(block_i, supps: list[tuple[set, set]], coords):
-    cache = {block_i: True}
-    return len([1 for i, _ in enumerate(coords) if will_fall(i, supps, cache) and i != block_i])
+        if (x + dx, y + dy) in path:
+            continue
 
+        longest_path = max(longest_path, follow(x + dx, y + dy, path.copy(), cache))
 
-def will_fall(block_i, supps, cache: dict):
-    if block_i in cache:
-        return cache[block_i]
-    supporters = supps[block_i][0]
-    for i in supporters:
-        wf = will_fall(i, supps, cache)
-        if not wf:
-            cache[block_i] = False
-            return False
-    res = len(supporters) > 0
-    cache[block_i] = res
-    return res
+    return longest_path
+
 
 
 with open("input.txt") as f:
-    lines = [x.strip().split('~') for x in f.readlines()]
-    coords = list(zip([list(map(int, x[0].split(','))) for x in lines], [list(map(int, x[1].split(','))) for x in lines]))
+    grid = [list(x.strip()) for x in f.readlines()]
+    start = grid[0].index('.')
+    end = grid[-1].index('.')
+    w, h = len(grid[0]), len(grid)
 
-    max_height = max([coord[0][2] for coord in coords])
+    # print(follow(start, 0, [], {}))
 
-    for i in range(max_height + 1):
-        by_height = defaultdict(list)
-        for j, block in enumerate(coords):
-            by_height[block[0][2]].append(j)
-        grid = {(x, y, z): k for k, block in enumerate(coords) for x in range(block[0][0], block[1][0] + 1) for y in range(block[0][1], block[1][1] + 1) for z in range(block[0][2], block[1][2] + 1)}
+    q = deque()
 
-        for block_i in by_height[i]:
-            new_block = drop_block(coords[block_i], block_i, grid)
-            coords[block_i] = new_block
+    q.append((start, 0, [start]))
 
-    grid = {(x, y, z): k for k, block in enumerate(coords) for x in range(block[0][0], block[1][0] + 1) for y in range(block[0][1], block[1][1] + 1) for z in range(block[0][2], block[1][2] + 1)}
+    visited = set()
+    visited.add((start, 0, 1))
 
-    supporters_and_supported = [get_supporters_and_supported(block, block_i, grid) for block_i, block in enumerate(coords)]
+    best_dist = 0
 
-    disintegration_count = 0
+    while len(q) > 0:
+        x, y, path = q.pop()
+        # print(x, y)
+        if x == end and y == h - 1:
+            print(len(path))
+            best_dist = max(best_dist, len(path))
 
-    for block_i, block in enumerate(coords):
-        falls = get_fall_count(block_i, supporters_and_supported, coords)
-        disintegration_count += falls
+        for i, (dx, dy) in enumerate(DIRS):
+            nx, ny = x + dx, y + dy
+            if not is_walkable(i, nx, ny):
+                continue
 
-    print(disintegration_count)
+            if (nx, ny) in path:
+                continue
+
+            if (nx, ny, tuple(path)) not in visited:
+                visited.add((nx, ny, tuple(path)))
+                q.append((nx, ny, path + [(nx, ny)]))
+
+    # print(visited)
+    print(best_dist - 1)
