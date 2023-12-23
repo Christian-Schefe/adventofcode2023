@@ -44,22 +44,23 @@ with open("input.txt") as f:
     w, h = len(grid[0]), len(grid)
     start = grid[0].index('.')
     end = grid[-1].index('.')
-    end_i = end + (h - 1) * w
 
     nodes = [(x, y) for y, line in enumerate(grid) for x, tile in enumerate(line) if tile == '.' and len(direct_neighbours(x, y)) >= 3]
     nodes = [(x, y) for x, y in nodes if len(direct_neighbours(x, y)) >= 3]
     nodes.append((start, 0))
     nodes.append((end, h - 1))
+    start_i = nodes.index((start, 0))
+    end_i = nodes.index((end, h - 1))
 
     graph = {}
-    for x, y in nodes:
+    for i, (x, y) in enumerate(nodes):
         neighbours = [follow(x + dx, y + dy, dx, dy) for dx, dy in DIRS]
-        graph[y * h + x] = [(n[1] * h + n[0], n[2]) for n in neighbours if n != None]
+        graph[i] = [(nodes.index((n[0], n[1])), n[2]) for n in neighbours if n != None]
 
     print(graph)
 
     q = deque()
-    q.appendleft(((start, ), 0))
+    q.appendleft(((start_i, ), 0))
 
     v = set()
 
@@ -83,7 +84,6 @@ with open("input.txt") as f:
                 continue
             v.add(new_pos)
             q.appendleft(new_pos)
-
 
     # print(visited)
     print(best_dist)
