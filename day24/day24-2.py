@@ -5,44 +5,121 @@ MIN_POS = 200_000_000_000_000
 MAX_POS = 400_000_000_000_000
 # MAX_POS = 27
 
+def cal():
+    pass
 
-def test_intersect(pos_a, vel_a, pos_b, vel_b):
-    m_a = vel_a[1] / vel_a[0]
-    b_a = pos_a[1] - m_a * pos_a[0]
 
-    m_b = vel_b[1] / vel_b[0]
-    b_b = pos_b[1] - m_b * pos_b[0]
+def get_pos(p, v, t):
+    return (p[0] + t * v[0], p[1] + t * v[1], p[2] + t * v[2])
 
-    if (m_b - m_a) == 0:
+
+def add(p1, p2):
+    return (p1[0] + p2[0], p1[1] + p2[1], p1[2] + p2[2])
+
+
+def sub(p1, p2):
+    return (p1[0] - p2[0], p1[1] - p2[1], p1[2] - p2[2])
+
+
+def div(p1, n):
+    return (p1[0] / n, p1[1] / n, p1[2] / n)
+
+
+def mul(p1, n):
+    return (p1[0] * n, p1[1] * n, p1[2] * n)
+
+
+def is_int(p1):
+    return p1[0] == int(p1[0]) and p1[1] == int(p1[1]) and p1[2] == int(p1[2])
+
+
+def is_inside(p1):
+    return p1[0] >= MIN_POS and p1[0] <= MAX_POS and p1[1] >= MIN_POS and p1[1] <= MAX_POS and p1[2] >= MIN_POS and p1[2] <= MAX_POS
+
+
+def test_intersect(p1, v1, p2, v2):
+    # p1 + t * v1 == p2 + t * v2
+    # t * v1 - t * v2 == p2 - p1
+    # t == (p2 - p1) / (v1 - v2)
+    ts = []
+    if v1[0] == v2[0]:
+        if p1[0] != p2[0]:
+            return None
+    else:
+        ts.append((p2[0] - p1[0]) / (v1[0] - v2[0]))
+
+    if v1[1] == v2[1]:
+        if p1[1] != p2[1]:
+            return None
+    else:
+        ts.append((p2[1] - p1[1]) / (v1[1] - v2[1]))
+
+    if v1[2] == v2[2]:
+        if p1[2] != p2[2]:
+            return None
+    else:
+        ts.append((p2[2] - p1[2]) / (v1[2] - v2[2]))
+
+    # print(p1, v1, p2, v2, ts)
+    for i in range(len(ts)):
+        if ts[i] != ts[0]:
+            return None
+
+    if len(ts) == 0:
+        return True
+
+    t = ts[0]
+    if t < 0:
         return None
 
-    ix = (b_a - b_b) / (m_b - m_a)
-    iy = b_a + m_a * ix
+    pos = get_pos(p1, v1, t)
+    pos2 = get_pos(p2, v2, t)
+    # print(pos, pos2)
+    return pos
 
-    if (vel_a[0] >= 0 and ix < pos_a[0]) or (vel_a[0] < 0 and ix > pos_a[0]):
-        return None
-    if (vel_b[0] >= 0 and ix < pos_b[0]) or (vel_b[0] < 0 and ix > pos_b[0]):
-        return None
 
-    return (ix, iy)
+def step(old_positions):
+    new_positions = [add(pos, vel) for pos, vel in zip(old_positions, velocities)]
+    return new_positions
 
 
 with open("input.txt") as f:
     positions, velocities = list(zip(*[x.strip().split('@') for x in f.readlines()]))
-    stone_count = len(positions)
     positions = [tuple(map(int, pos.split(','))) for pos in positions]
     velocities = [tuple(map(int, vel.split(','))) for vel in velocities]
-    print(positions, velocities)
+    stone_count = len(positions)
 
-    within_bounds = 0
-
-    for i in range(stone_count - 1):
-        for j in range(i + 1, stone_count):
-            res = test_intersect(positions[i], velocities[i], positions[j], velocities[j])
-            if res is None:
+    for i in range(stone_count):
+        for j in range(stone_count):
+            if i == j:
                 continue
-            x, y = res
-            if x >= MIN_POS and y >= MIN_POS and x <= MAX_POS and y <= MAX_POS:
-                within_bounds += 1
-            print(x, y)
-    print(within_bounds)
+            for t in range(10000):
+                if t % 100 == 0:
+                    print("->", i, j, t)
+                first_hit_pos = get_pos(positions[i], velocities[i], t)
+                if not is_inside(first_hit_pos):
+                    continue
+                for t2 in range(1, 10000):
+                    second_hit_pos = get_pos(positions[j], velocities[j], t + t2)
+                    if not is_inside(second_hit_pos):
+                        continue
+                    stone_vel = div(sub(second_hit_pos, first_hit_pos), t2)
+                    stone_pos = sub(first_hit_pos, mul(stone_vel, t))
+                    if not is_int(stone_vel):
+                        continue
+                    if not is_inside(stone_pos):
+                        continue
+                        # print(t, t2, stone_pos, first_hit_pos, stone_vel)
+
+                    for k in range(stone_count):
+                        if k == i or k == j:
+                            continue
+                        res = test_intersect(stone_pos, stone_vel, positions[k], velocities[k])
+                        if res is None:
+                            break
+                        if not is_inside(stone_pos):
+                            break
+                    else:
+                        print(stone_pos)
+                        print(stone_pos[0] + stone_pos[1] + stone_pos[2])
+                        exit()
