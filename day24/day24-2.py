@@ -1,12 +1,30 @@
 from collections import deque, defaultdict
+from math import lcm, gcd
 
-MIN_POS = 200_000_000_000_000
-# MIN_POS = 7
-MAX_POS = 400_000_000_000_000
-# MAX_POS = 27
 
-def cal():
-    pass
+def get_intersect(pos_a, vel_a, pos_b, vel_b):
+    res = get_any_intersect(pos_a, vel_a, pos_b, vel_b)
+    if res == None:
+        return None
+    ret, mua, mub = res
+    if mua != int(mua) or int(mua) != int(mub):
+        return None
+    if int(mua) < 0:
+        return None
+
+    return ret
+
+
+def get_any_intersect(pos_a, vel_a, pos_b, vel_b):
+    p1, p2, p3, p4 = pos_a, add(pos_a, vel_a), pos_b, add(pos_b, vel_b)
+
+    divisor = (dot2(p2, p1, p2, p1) * dot2(p4, p3, p4, p3) - dot2(p4, p3, p2, p1) * dot2(p4, p3, p2, p1))
+    if divisor == 0:
+        return None,
+    mua = (dot2(p1, p3, p4, p3) * dot2(p4, p3, p2, p1) - dot2(p1, p3, p2, p1) * dot2(p4, p3, p4, p3)) / divisor
+    mub = (dot2(p1, p3, p4, p3) + mua * dot2(p4, p3, p2, p1)) / dot2(p4, p3, p4, p3)
+
+    return add(pos_a, mul(vel_a, int(mua))), mua, mub
 
 
 def get_pos(p, v, t):
@@ -25,101 +43,57 @@ def div(p1, n):
     return (p1[0] / n, p1[1] / n, p1[2] / n)
 
 
+def int_div(p1, n):
+    return (p1[0] // n, p1[1] // n, p1[2] // n)
+
+
 def mul(p1, n):
     return (p1[0] * n, p1[1] * n, p1[2] * n)
 
 
-def is_int(p1):
-    return p1[0] == int(p1[0]) and p1[1] == int(p1[1]) and p1[2] == int(p1[2])
+def dot(p1, p2):
+    return (p1[0] * p2[0] + p1[1] * p2[1] + p1[2] * p2[2])
 
 
-def is_inside(p1):
-    return p1[0] >= MIN_POS and p1[0] <= MAX_POS and p1[1] >= MIN_POS and p1[1] <= MAX_POS and p1[2] >= MIN_POS and p1[2] <= MAX_POS
+def dot2(m, n, o, p):
+    return dot(sub(m, n), sub(o, p))
 
 
-def test_intersect(p1, v1, p2, v2):
-    # p1 + t * v1 == p2 + t * v2
-    # t * v1 - t * v2 == p2 - p1
-    # t == (p2 - p1) / (v1 - v2)
-    ts = []
-    if v1[0] == v2[0]:
-        if p1[0] != p2[0]:
-            return None
-    else:
-        ts.append((p2[0] - p1[0]) / (v1[0] - v2[0]))
-
-    if v1[1] == v2[1]:
-        if p1[1] != p2[1]:
-            return None
-    else:
-        ts.append((p2[1] - p1[1]) / (v1[1] - v2[1]))
-
-    if v1[2] == v2[2]:
-        if p1[2] != p2[2]:
-            return None
-    else:
-        ts.append((p2[2] - p1[2]) / (v1[2] - v2[2]))
-
-    # print(p1, v1, p2, v2, ts)
-    for i in range(len(ts)):
-        if ts[i] != ts[0]:
-            return None
-
-    if len(ts) == 0:
-        return True
-
-    t = ts[0]
-    if t < 0:
-        return None
-
-    pos = get_pos(p1, v1, t)
-    pos2 = get_pos(p2, v2, t)
-    # print(pos, pos2)
-    return pos
-
-
-def step(old_positions):
-    new_positions = [add(pos, vel) for pos, vel in zip(old_positions, velocities)]
-    return new_positions
+def test_stone(pos, vel):
+    for k in range(len(stones)):
+        res = get_intersect(pos, vel, ps[k], vs[k])
+        if res is None:
+            return False
+    return True
 
 
 with open("input.txt") as f:
-    positions, velocities = list(zip(*[x.strip().split('@') for x in f.readlines()]))
-    positions = [tuple(map(int, pos.split(','))) for pos in positions]
-    velocities = [tuple(map(int, vel.split(','))) for vel in velocities]
-    stone_count = len(positions)
+    pos_input, vel_input = list(zip(*[x.strip().split('@') for x in f.readlines()]))
 
-    for i in range(stone_count):
-        for j in range(stone_count):
-            if i == j:
+    ps = [tuple(map(int, pos.split(','))) for pos in pos_input]
+    vs = [tuple(map(int, vel.split(','))) for vel in vel_input]
+    stones = list(zip(ps, vs))
+
+    fitting_rock_vel = [None, None, None]
+
+    for rock_vel in range(-1000, 1000):
+        for k in range(3):
+            is_valid = True
+            for i in range(len(stones)):
+                for j in range(len(stones)):
+                    if i == j or vs[i][k] != vs[j][k] or rock_vel == vs[i][k]:
+                        continue
+                    pos_diff = abs(ps[j][k] - ps[i][k])
+                    vel_diff = rock_vel - vs[i][k]
+                    if pos_diff % vel_diff != 0:
+                        is_valid = False
+                        break
+                if not is_valid:
+                    break
+            if is_valid:
+                fitting_rock_vel[k] = rock_vel
+                print("vel", k, ":", rock_vel)
                 continue
-            for t in range(10000):
-                if t % 100 == 0:
-                    print("->", i, j, t)
-                first_hit_pos = get_pos(positions[i], velocities[i], t)
-                if not is_inside(first_hit_pos):
-                    continue
-                for t2 in range(1, 10000):
-                    second_hit_pos = get_pos(positions[j], velocities[j], t + t2)
-                    if not is_inside(second_hit_pos):
-                        continue
-                    stone_vel = div(sub(second_hit_pos, first_hit_pos), t2)
-                    stone_pos = sub(first_hit_pos, mul(stone_vel, t))
-                    if not is_int(stone_vel):
-                        continue
-                    if not is_inside(stone_pos):
-                        continue
-                        # print(t, t2, stone_pos, first_hit_pos, stone_vel)
 
-                    for k in range(stone_count):
-                        if k == i or k == j:
-                            continue
-                        res = test_intersect(stone_pos, stone_vel, positions[k], velocities[k])
-                        if res is None:
-                            break
-                        if not is_inside(stone_pos):
-                            break
-                    else:
-                        print(stone_pos)
-                        print(stone_pos[0] + stone_pos[1] + stone_pos[2])
-                        exit()
+    intersect = get_any_intersect(ps[0], sub(fitting_rock_vel, vs[0]), ps[1], sub(fitting_rock_vel, vs[1]))[0]
+    print(intersect[0] + intersect[1] + intersect[2])
