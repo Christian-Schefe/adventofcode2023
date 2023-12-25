@@ -68,7 +68,7 @@ def find_cut(graph):
             return res
 
 
-def is_bisected(graph: dict):
+def try_get_split_groups(graph: dict):
     first_item = list(graph.keys())[0]
     q = deque()
     q.appendleft(first_item)
@@ -81,7 +81,7 @@ def is_bisected(graph: dict):
                 v.add(nei)
                 q.appendleft(nei)
     val = len(v) * (len(graph) - len(v))
-    return val if len(v) != len(graph) else None
+    return val if val != 0 else None
 
 
 with open("input.txt") as f:
@@ -100,4 +100,4 @@ with open("input.txt") as f:
         graph[edge[0]].remove(edge[1])
         graph[edge[1]].remove(edge[0])
 
-    print(is_bisected(graph))
+    print(try_get_split_groups(graph))
