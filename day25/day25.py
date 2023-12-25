@@ -50,7 +50,7 @@ def try_find_cut(graph: dict[str, list], start, end, removed_edges):
 
         graph[edge[0]].append(edge[1])
         graph[edge[1]].append(edge[0])
-        
+
         if res is not None:
             return res
 
@@ -84,42 +84,8 @@ def is_bisected(graph: dict):
     return val if len(v) != len(graph) else None
 
 
-def try_bisect(removed_cables: list, graph: dict[str, list], cache):
-    key = tuple(sorted(removed_cables))
-    if key in cache:
-        print(key)
-        return cache[key]
-
-    res = is_bisected(graph)
-    if res is not None:
-        cache[key] = (removed_cables, res)
-        return (removed_cables, res)
-
-    if len(removed_cables) == 3:
-        cache[key] = None
-        return None
-
-    for x in graph:
-        for n in graph[x]:
-            new_graph = graph.copy()
-            new_graph[x] = new_graph[x].copy()
-            new_graph[n] = new_graph[n].copy()
-            new_graph[x].remove(n)
-            new_graph[n].remove(x)
-
-            res = try_bisect(removed_cables + [(x, n)], new_graph, cache)
-            if res is not None:
-                cache[key] = res
-                return res
-
-    cache[key] = None
-    return None
-
-
 with open("input.txt") as f:
-    lines = [x.strip().split(':') for x in f.readlines()]
-    lines = [(y[0], y[1].strip().split(' ')) for y in lines]
-    print(lines)
+    lines = [(y[0], y[1].strip().split(' ')) for y in [x.strip().split(':') for x in f.readlines()]]
 
     graph = defaultdict(set)
     for node, neighbours in lines:
@@ -128,8 +94,6 @@ with open("input.txt") as f:
             graph[n].add(node)
 
     graph = {x: list(graph[x]) for x in graph}
-    print(graph)
-    # print(try_bisect([], graph, {}))
     cut = find_cut(graph)
 
     for edge in cut:
